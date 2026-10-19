@@ -1,0 +1,24 @@
+[project]
+name = "a1-minimal-lm"
+version = "0.1.0"
+description = "Assignment 1: train a minimal language model from scratch (LFM from Scratch, University of Vienna)"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.2",
+    "numpy>=1.26",
+    "regex>=2023.0",
+    "einops>=0.7",
+    "jaxtyping>=0.2.25",
+    "pytest>=8.0",
+    "tqdm>=4.66",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --tb=short"
+markers = ["slow: tests that take more than a few seconds"]
+
+[dependency-groups]
+dev = [
+    "psutil>=7.2.2",
+]

@@ -1,0 +1,50 @@
+% Assignment 1 report template. At most three pages.
+% Fill in every section; keep the headings. Compile with pdflatex.
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{graphicx,booktabs,amsmath,hyperref,listings}
+\title{Assignment 1: Train a minimal language model from scratch}
+\author{Name (matriculation number, study program)}
+\date{\today}
+\begin{document}
+\maketitle
+
+\section{Tokenizer (R1)}
+% training time, peak memory, longest token, the first twenty merges, bytes/token on the
+% TinyStories validation text and on the OpenWebText sample, encoding throughput.
+% Two sentences: what does the bytes-per-token difference tell you?
+
+\section{Sanity checks (R2)}
+% initial loss, the overfit-one-batch curve (figure), the resume test.
+
+\section{Learning-rate sweep (R3)}
+% figure: final validation loss vs learning rate (log axis); the chosen rate.
+
+\section{Reference run (R4)}
+% figure: train and validation loss (log-scale x). Final validation loss, GPU, tokens/s, MFU.
+
+\section{Efficiency table (R5)}
+\begin{table}[h]\centering
+\begin{tabular}{@{}lrr@{}}\toprule
+Configuration & tokens/s & MFU \\\midrule
+eager fp32 & & \\
++ autocast & & \\
++ \texttt{F.scaled\_dot\_product\_attention} & & \\
++ fused \texttt{AdamW} & & \\
++ \texttt{torch.compile} & & \\\bottomrule
+\end{tabular}\end{table}
+% one paragraph: which change moved which bar of your profile?
+
+\section{Ablation (R6)}
+% name, prediction (written before the run), measurement, explanation.
+
+\section{Samples (R7)}
+% five samples at T = 0.7, p = 0.9, one at T = 1.5; two sentences on quality.
+
+\section{What went wrong (R8)}
+% the bug that cost the most time, and how you found it.
+
+\appendix
+\section{Run table}
+% generated from results.json: every run with lr, steps, tokens, val loss, tokens/s.
+\end{document}

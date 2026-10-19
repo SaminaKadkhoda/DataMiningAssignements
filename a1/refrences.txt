@@ -1,0 +1,18 @@
+openwebtext: https://huggingface.co/datasets/stanford-cs336/owt-sample/tree/main
+tinystories: https://huggingface.co/datasets/roneneldan/TinyStories/tree/main
+
+https://www.geeksforgeeks.org/python/classmethod-in-python/
+https://universopython.com/en/blog/python-generators-iterators-guide
+https://www.geeksforgeeks.org/python/monitoring-memory-usage-of-a-running-python-program/
+https://www.geeksforgeeks.org/python/multithreading-python-set-1/
+https://docs.pytorch.org/tutorials/beginner/basics/buildmodel_tutorial.html
+https://docs.pytorch.org/docs/main/nn.html
+https://docs.pytorch.org/docs/2.14/nn.init.html
+https://www.redcrab-software.com/en/Calculator/Softmax
+https://www.geeksforgeeks.org/python/what-is-with-torch-no_grad-in-pytorch/
+https://docs.pytorch.org/docs/2.14/optim
+https://docs.pytorch.org/docs/2.14/generated/torch.optim.AdamW.html
+https://docs.pytorch.org/docs/2.14/generated/torch.optim.Optimizer.state_dict.html
+https://github.com/pytorch/pytorch/blob/main/torch/optim/adam.py
+https://www.geeksforgeeks.org/python/python-select-random-value-from-a-list/
+https://en.wikipedia.org/wiki/Top-p_sampling
