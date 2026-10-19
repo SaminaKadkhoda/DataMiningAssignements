@@ -1,7 +1,7 @@
 import torch
 import math
 import numpy as np
-from model import softmax 
+from lm.model import softmax 
 def cross_entropy(logits, targets):
     logits = logits.to(torch.float32)
     m = logits.max(-1, keepdim=True)[0]
@@ -128,43 +128,3 @@ def generate(model, prompt_ids, max_new_tokens, temperature, top_p, eos_id=None,
             break
         ids = torch.cat([ids, next_id], dim=1)
     return generated
-
-
-
-
-
-
-
-
-
-# @torch.no_grad()
-# def generate(model, prompt_ids, max_new_tokens, temperature, top_p, eos_id=None, seed=0):
-#     model.eval()
-#     device = next(model.parameters()).device
-#     ids = torch.tensor(prompt_ids, dtype=torch.long, device=device).unsqueeze(0)
-#     generated = []
-#     generator = torch.Generator(device=device).manual_seed(seed)
-
-#     for _ in range(max_new_tokens):
-#         logits = model(ids[:, -model.context_length:])[:, -1, :].float()
-
-#         if temperature < 1e-3:
-#             next_id = logits.argmax(dim=-1, keepdim=True)
-#         else:
-#             probs = torch.softmax(logits / temperature, dim=-1)
-#             sorted_probs, sorted_ids = torch.sort(probs, descending=True, dim=-1)
-#             cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
-#             remove = cumulative_probs - sorted_probs >= top_p
-#             sorted_probs[remove] = 0
-#             probs = torch.zeros_like(probs).scatter(-1, sorted_ids, sorted_probs)
-#             probs = probs / probs.sum(dim=-1, keepdim=True)
-#             next_id = torch.multinomial(probs, 1, generator=generator)
-
-#         token_id = next_id.item()
-#         generated.append(token_id)
-#         ids = torch.cat([ids, next_id], dim=-1)
-
-#         if eos_id is not None and token_id == eos_id:
-#             break
-
-#     return generated

@@ -20,8 +20,9 @@ import numpy as np
 import torch
 
 # TODO: import your code, e.g.
-from lm.model import (TransformerLM, AdamW, cross_entropy, clip_grad_norm_, lr_cosine, get_batch,
-    save_checkpoint, load_checkpoint, count_params, count_flops)
+from lm.model import (TransformerLM, count_params, count_flops, RotaryPositionalEmbedding)
+from lm.model_utils import (AdamW, cross_entropy, clip_grad_norm_, lr_cosine, get_batch,
+    save_checkpoint, load_checkpoint)
 
 PEAK_FLOPS = {"T4": 65e12, "L4": 121e12, "A100": 312e12, "H100": 989e12}   # bf16/fp16 dense peak
 
@@ -100,12 +101,17 @@ def main() -> None:
     val = np.memmap(args.val, dtype=np.uint16, mode="r")
 
     # TODO: build the model and the optimizer with your classes
-    model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, cfg.rope_theta).to(device)
+    rope_emb = RotaryPositionalEmbedding(cfg.rope_theta, cfg.d_model//cfg.num_heads, cfg.context_length)
+    model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, rope=rope_emb).to(device)
+    #model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, cfg.rope_theta).to(device)
     opt = AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay)
     #raise NotImplementedError("build model and optimizer, then delete this line")
 
-    n_params = count_params(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff)  # noqa: F821
-    fwd_flops, train_flops = count_flops(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, cfg.context_length)  # noqa: F821
+    #n_params = count_params(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff)
+    n_params = count_params(model)  # noqa: F821
+    #fwd_flops, train_flops = count_flops(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, cfg.context_length)
+    config_dict = {"vocab_size": cfg.vocab_size, "d_model": cfg.d_model, "num_layers": cfg.num_layers, "d_ff": cfg.d_ff, "num_heads": cfg.num_heads}
+    fwd_flops, train_flops = count_flops(config_dict, cfg.context_length)  # noqa: F821
     assert n_params == sum(p.numel() for p in model.parameters()), "count_params disagrees with the model"
 
     start = 0
@@ -143,7 +149,8 @@ def main() -> None:
             rec = {"step": step, "val_loss": evaluate(model, val, cfg, device)}
             print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
         if step % cfg.ckpt_every == 0 and step > start:
-            save_checkpoint(model, opt, step, ckpt)  # noqa: F821
+            #added 1 to the step, so it starts from the next step, not the already processed one
+            save_checkpoint(model, opt, step+1, ckpt)  # noqa: F821 
 
     save_checkpoint(model, opt, cfg.steps, ckpt)  # noqa: F821
     if device == "cuda":
