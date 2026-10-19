@@ -94,7 +94,12 @@ def main() -> None:
 
     torch.manual_seed(cfg.seed); np.random.seed(cfg.seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    amp_dtype = torch.bfloat16 if (device == "cuda" and torch.cuda.is_bf16_supported()) else torch.float16
+    #amp_dtype = torch.bfloat16 if (device == "cuda" and torch.cuda.is_bf16_supported()) else torch.float16 #for faster run
+    if device == "cuda":
+        major, _ = torch.cuda.get_device_capability()
+        amp_dtype = torch.bfloat16 if major >= 8 else torch.float16
+    else:
+        amp_dtype = torch.float32
     scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda" and amp_dtype == torch.float16))
 
     train = np.memmap(args.data, dtype=np.uint16, mode="r")
@@ -104,7 +109,8 @@ def main() -> None:
     rope_emb = RotaryPositionalEmbedding(cfg.rope_theta, cfg.d_model//cfg.num_heads, cfg.context_length)
     model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, rope=rope_emb).to(device)
     #model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, cfg.rope_theta).to(device)
-    opt = AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay)
+    #opt = AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay)
+    opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay, fused=True) #for fasterr run
     #raise NotImplementedError("build model and optimizer, then delete this line")
 
     #n_params = count_params(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff)
