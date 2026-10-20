@@ -110,8 +110,8 @@ def main() -> None:
     rope_emb = RotaryPositionalEmbedding(cfg.rope_theta, cfg.d_model//cfg.num_heads, cfg.context_length)
     model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, rope=rope_emb).to(device)
     #model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, cfg.rope_theta).to(device)
-    opt = AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay)
-    #opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay, fused=True) #for fasterr run
+    #opt = AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay)
+    opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay, fused=True) #for fasterr run
     #raise NotImplementedError("build model and optimizer, then delete this line")
 
     #n_params = count_params(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff)
@@ -177,10 +177,10 @@ def main() -> None:
             torch.cuda.synchronize()
             eager_time = time.time() - eager_t0
             eager_tokens_per_s = (200 * cfg.batch_size * cfg.context_length / eager_time)
-            print(f"F.sdpa 200-step tokens_per_s: {eager_tokens_per_s}")
+            print(f"torch.optim.AdamW 200-step tokens_per_s: {eager_tokens_per_s}")
 
     print(prof.key_averages().table(sort_by="cuda_time_total",row_limit=20))
-    prof.export_chrome_trace("trace_spda.json")
+    prof.export_chrome_trace("trace_adamw.json")
 
 
 
