@@ -38,7 +38,7 @@ class Config:
     rope_theta: float = 10000.0
     batch_size: int = 32
     steps: int = 24414
-    lr_max: float = 1e-3
+    lr_max: float = 3e-3 #set to best rate
     lr_min_frac: float = 0.1
     warmup_frac: float = 0.05
     weight_decay: float = 0.1
@@ -97,10 +97,11 @@ def main() -> None:
     #amp_dtype = torch.bfloat16 if (device == "cuda" and torch.cuda.is_bf16_supported()) else torch.float16
     if device == "cuda": #for t4 run
         major, _ = torch.cuda.get_device_capability()
-        amp_dtype = torch.bfloat16 if major >= 8 else torch.float16
+        amp_dtype = torch.float32 if major >= 8 else torch.float32 #for eager fp32: float32 otherwise bfloat16 and float16
     else:
         amp_dtype = torch.float32
-    scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda" and amp_dtype == torch.float16))
+    #scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda" and amp_dtype == torch.float16))
+    scaler = torch.cuda.amp.GradScaler(enabled=False) #for eager fp32
 
     train = np.memmap(args.data, dtype=np.uint16, mode="r")
     val = np.memmap(args.val, dtype=np.uint16, mode="r")
@@ -130,12 +131,17 @@ def main() -> None:
     tokens_per_step = cfg.batch_size * cfg.context_length
     warmup = int(cfg.warmup_frac * cfg.steps)
     t0, tok_count = time.time(), 0
+    eager_t0 = None
     for step in range(start, cfg.steps):
+        if step == 50: #for eager fp32: after 50 warmups
+            torch.cuda.synchronize()
+            eager_t0 = time.time()
         lr = lr_cosine(step, cfg.lr_max, cfg.lr_max * cfg.lr_min_frac, warmup, cfg.steps)  # noqa: F821
         for g in opt.param_groups:
             g["lr"] = lr
         x, y = get_batch(train, cfg.batch_size, cfg.context_length, device)  # noqa: F821
-        with torch.autocast(device_type=device, dtype=amp_dtype, enabled=(device == "cuda")):
+        #with torch.autocast(device_type=device, dtype=amp_dtype, enabled=(device == "cuda")):
+        with torch.autocast(device_type=device, dtype=amp_dtype, enabled=False): #for eager fp32
             logits = model(x)
         loss = cross_entropy(logits.float(), y)  # noqa: F821
         scaler.scale(loss).backward()
@@ -145,18 +151,27 @@ def main() -> None:
         opt.zero_grad(set_to_none=True)
         tok_count += tokens_per_step
 
-        if step % 50 == 0:
-            if device == "cuda":
-                torch.cuda.synchronize()
-            el = time.time() - t0
-            rec = {"step": step, "loss": loss.item(), "lr": lr, "gnorm": float(gnorm), "tokens_per_s": tok_count / el if el else 0}
-            print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
-        if step % cfg.eval_every == 0 or step == cfg.steps - 1:
-            rec = {"step": step, "val_loss": evaluate(model, val, cfg, device)}
-            print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
-        if step % cfg.ckpt_every == 0 and step > start:
-            #added 1 to the step, so it starts from the next step, not the already processed one
-            save_checkpoint(model, opt, step+1, ckpt)  # noqa: F821 
+        # if step % 50 == 0:
+        #     if device == "cuda":
+        #         torch.cuda.synchronize()
+        #     el = time.time() - t0
+        #     rec = {"step": step, "loss": loss.item(), "lr": lr, "gnorm": float(gnorm), "tokens_per_s": tok_count / el if el else 0}
+        #         print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
+        # if step % cfg.eval_every == 0 or step == cfg.steps - 1:
+        #     rec = {"step": step, "val_loss": evaluate(model, val, cfg, device)}
+        #     print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
+        # if step % cfg.ckpt_every == 0 and step > start:
+        #     #added 1 to the step, so it starts from the next step, not the already processed one
+        #     save_checkpoint(model, opt, step+1, ckpt)  # noqa: F821 
+
+        #--------------------------------------for eager fp32
+        if step+1 == 250: #analyze 200 steps
+            torch.cuda.synchronize()
+            eager_time = time.time() - eager_t0
+            eager_tokens_per_s = (200 * cfg.batch_size * cfg.context_length / eager_time)
+            print(f"eager 200-step tokens_per_s: {eager_tokens_per_s}")
+
+
 
     save_checkpoint(model, opt, cfg.steps, ckpt)  # noqa: F821
     if device == "cuda":
