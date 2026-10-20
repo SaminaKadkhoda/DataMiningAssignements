@@ -19,6 +19,8 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import torch
 
+from torch.profiler import profile, ProfilerActivity
+
 # TODO: import your code, e.g.
 from lm.model import (TransformerLM, count_params, count_flops, RotaryPositionalEmbedding)
 from lm.model_utils import (AdamW, cross_entropy, clip_grad_norm_, lr_cosine, get_batch,
@@ -132,7 +134,11 @@ def main() -> None:
     warmup = int(cfg.warmup_frac * cfg.steps)
     t0, tok_count = time.time(), 0
     eager_t0 = None
+    prof = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA])
     for step in range(start, cfg.steps):
+        if step == 253:  #profile start
+            torch.cuda.synchronize()
+            prof.start()
         if step == 50: #for eager fp32: after 50 warmups
             torch.cuda.synchronize()
             eager_t0 = time.time()
@@ -165,11 +171,18 @@ def main() -> None:
         #     save_checkpoint(model, opt, step+1, ckpt)  # noqa: F821 
 
         #--------------------------------------for eager fp32
+        if step == 257:  #profile end
+            torch.cuda.synchronize()
+            prof.stop()
+ 
         if step+1 == 250: #analyze 200 steps
             torch.cuda.synchronize()
             eager_time = time.time() - eager_t0
             eager_tokens_per_s = (200 * cfg.batch_size * cfg.context_length / eager_time)
             print(f"eager 200-step tokens_per_s: {eager_tokens_per_s}")
+
+    print(prof.key_averages().table(sort_by="cuda_time_total",row_limit=20))
+    prof.export_chrome_trace("trace_eager.json")
 
 
 
