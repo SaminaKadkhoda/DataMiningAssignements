@@ -79,10 +79,22 @@ for input_path in eval_paths:
 
 
 #results:
-# Training BPE on ../data/TinyStoriesV2-GPT4-train.txt...
+# Training BPE on ../data/tinystories_train.txt...
 # Vocab size: 10000
 # Merges size: 9743
-# Peak memory: 89137152 bytes
-# Training time: 1151.8963736 secs (19.198272893333336 mins)
+# Peak memory: 89767936 bytes
+# Training time: 1251.0382787999697 secs (20.850637979999494 mins)
 # Longest token: b' accomplishment' (length: 15 bytes)
 # First 20 merges: [(b' ', b't'), (b'h', b'e'), (b' ', b'a'), (b' ', b's'), (b' ', b'w'), (b'n', b'd'), (b' t', b'he'), (b'e', b'd'), (b' ', b'b'), (b' t', b'o'), (b' a', b'nd'), (b' ', b'h'), (b' ', b'f'), (b'i', b'n'), (b' ', b'T'), (b' w', b'a'), (b'r', b'e'), (b'i', b't'), (b'o', b'u'), (b' ', b'l')]
+# Evaluating on ../data/tinystories_valid.txt...
+# Input size: 22.502601 MB
+# Token count: 5465882
+# Tokenization time: 82.96440749999601 secs
+# Throughput: 0.27123198583683106 MB/s
+# Bytes per token: 4.116920379913068
+# Evaluating on ../data/owt_valid.txt...
+# Input size: 289.998753 MB
+# Token count: 91370967
+# Tokenization time: 1198.1350417999784 secs
+# Throughput: 0.24204179235449957 MB/s
+# Bytes per token: 3.173861047131087

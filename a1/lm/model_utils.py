@@ -50,7 +50,7 @@ class AdamW(torch.optim.Optimizer):
                 param.copy_(param_next)
 
 def lr_cosine(step, lr_max, lr_min, warmup_steps, total_steps):
-    if step <= warmup_steps: #linear warmup
+    if step <= warmup_steps and warmup_steps > 0: #linear warmup and skip if no warmup
         return lr_max*step/warmup_steps
     if step >= total_steps: #constant afterwards
         return lr_min
