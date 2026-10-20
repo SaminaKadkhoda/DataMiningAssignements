@@ -177,10 +177,10 @@ def main() -> None:
             torch.cuda.synchronize()
             eager_time = time.time() - eager_t0
             eager_tokens_per_s = (200 * cfg.batch_size * cfg.context_length / eager_time)
-            print(f"autocast 200-step tokens_per_s: {eager_tokens_per_s}")
+            print(f"F.sdpa 200-step tokens_per_s: {eager_tokens_per_s}")
 
     print(prof.key_averages().table(sort_by="cuda_time_total",row_limit=20))
-    prof.export_chrome_trace("trace_autocast.json")
+    prof.export_chrome_trace("trace_spda.json")
 
 
 

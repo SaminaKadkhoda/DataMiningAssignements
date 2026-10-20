@@ -133,8 +133,8 @@ class MultiheadSelfAttention(nn.Module):
             v = v.repeat_interleave(n, dim=-3)
 
         mask = torch.tril(torch.ones(s, s, dtype=bool, device=x.device))
-        o = scaled_dot_product_attention(q, k, v, mask).transpose(-3,-2).contiguous().reshape(*leading_shape, s, self.num_heads * self.d_h)
-        #o = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, dropout_p=0.0).transpose(-3,-2).contiguous().reshape(*leading_shape, s, self.num_heads * self.d_h) #for efficinecy table
+        #o = scaled_dot_product_attention(q, k, v, mask).transpose(-3,-2).contiguous().reshape(*leading_shape, s, self.num_heads * self.d_h)
+        o = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, dropout_p=0.0).transpose(-3,-2).contiguous().reshape(*leading_shape, s, self.num_heads * self.d_h) #for efficinecy table
         
 
         return self.w_o(o)
