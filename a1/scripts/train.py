@@ -18,9 +18,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 import torch
-
 from torch.profiler import profile, ProfilerActivity
-
 # TODO: import your code, e.g.
 from lm.model import (TransformerLM, count_params, count_flops, RotaryPositionalEmbedding)
 from lm.model_utils import (AdamW, cross_entropy, clip_grad_norm_, lr_cosine, get_batch,
@@ -99,11 +97,11 @@ def main() -> None:
     #amp_dtype = torch.bfloat16 if (device == "cuda" and torch.cuda.is_bf16_supported()) else torch.float16
     if device == "cuda": #for t4 run
         major, _ = torch.cuda.get_device_capability()
-        amp_dtype = torch.float32 if major >= 8 else torch.float32 #for eager fp32: float32 otherwise bfloat16 and float16
+        amp_dtype = torch.bfloat16 if major >= 8 else torch.float16 #for eager fp32: float32 otherwise bfloat16 and float16
     else:
         amp_dtype = torch.float32
-    #scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda" and amp_dtype == torch.float16))
-    scaler = torch.cuda.amp.GradScaler(enabled=False) #for eager fp32
+    scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda" and amp_dtype == torch.float16))
+    #scaler = torch.cuda.amp.GradScaler(enabled=False) #for eager fp32
 
     train = np.memmap(args.data, dtype=np.uint16, mode="r")
     val = np.memmap(args.val, dtype=np.uint16, mode="r")
@@ -146,8 +144,8 @@ def main() -> None:
         for g in opt.param_groups:
             g["lr"] = lr
         x, y = get_batch(train, cfg.batch_size, cfg.context_length, device)  # noqa: F821
-        #with torch.autocast(device_type=device, dtype=amp_dtype, enabled=(device == "cuda")):
-        with torch.autocast(device_type=device, dtype=amp_dtype, enabled=False): #for eager fp32
+        with torch.autocast(device_type=device, dtype=amp_dtype, enabled=(device == "cuda")):
+        #with torch.autocast(device_type=device, dtype=amp_dtype, enabled=False): #for eager fp32
             logits = model(x)
         loss = cross_entropy(logits.float(), y)  # noqa: F821
         scaler.scale(loss).backward()
@@ -170,19 +168,19 @@ def main() -> None:
         #     #added 1 to the step, so it starts from the next step, not the already processed one
         #     save_checkpoint(model, opt, step+1, ckpt)  # noqa: F821 
 
-        #--------------------------------------for eager fp32
+        #--------------------------------------for eager fp32 
         if step == 257:  #profile end
             torch.cuda.synchronize()
             prof.stop()
- 
+        
         if step+1 == 250: #analyze 200 steps
             torch.cuda.synchronize()
             eager_time = time.time() - eager_t0
             eager_tokens_per_s = (200 * cfg.batch_size * cfg.context_length / eager_time)
-            print(f"eager 200-step tokens_per_s: {eager_tokens_per_s}")
+            print(f"autocast 200-step tokens_per_s: {eager_tokens_per_s}")
 
     print(prof.key_averages().table(sort_by="cuda_time_total",row_limit=20))
-    prof.export_chrome_trace("trace_eager.json")
+    prof.export_chrome_trace("trace_autocast.json")
 
 
 
