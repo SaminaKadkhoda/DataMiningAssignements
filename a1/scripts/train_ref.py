@@ -120,6 +120,10 @@ def main() -> None:
     fwd_flops, train_flops = count_flops(config_dict, cfg.context_length)  # noqa: F821
     assert n_params == sum(p.numel() for p in model.parameters()), "count_params disagrees with the model"
 
+    print(f"Parameters: {n_params:,}")
+    print(f"Forward FLOPs per token: {fwd_flops:,}")
+    print(f"Training FLOPs per token: {train_flops:,}")
+
     start = 0
     ckpt = os.path.join(args.out, "ckpt.pt")
     if args.resume and os.path.exists(ckpt):
