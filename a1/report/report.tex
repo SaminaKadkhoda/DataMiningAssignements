@@ -61,6 +61,13 @@ On the tinystories text, the model could fit more bytes into one token, compared
     \label{fig:sweep}
 \end{figure}
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.35\linewidth]{sweep_loss_curves.png}
+    \caption{Training and validation loss over the 4883 steps. The loss starts gradually decreasing as we go on.}
+    \label{fig:sweep_loss_curves}
+\end{figure}
+
 \section{Reference run (R4)}
 % figure: train and validation loss (log-scale x). Final validation loss, GPU, tokens/s, MFU.
 \begin{itemize}
@@ -102,7 +109,17 @@ Therefore the loss can become more unstable in the first steps, and consequently
 \section{Samples (R7)}
 % five samples at T = 0.7, p = 0.9, one at T = 1.5; two sentences on quality.
 \begin{itemize} 
-\item Generations(the prompts are availabe in the notebook):
+\item My prompts: the first 5 samples are run wit htemperature 0.7, and the last sample with temperature 1.5.
+\begin{itemize} 
+\item "Today the weather is sunny and the trees are tall"
+\item "Harry answered the phone call and talked to his mother for four minutes."
+\item "The quantum computing center in London collaborates with industry to develop infrastructure."
+\item "The friendly waitress took the orders from a few tables and brought them to the kitchen."
+\item "She decided to study history of art to work in the most famous gallery and teach kids."
+\item "Planet Jupiter is the biggest planet in our solar system and it's brown and white."
+\end{itemize}
+
+\item Generations(in the same order):
 \begin{itemize} 
 \item They are happy and warm. They play outside in the sun. They have fun.
 \item His mother was very impressed with how the phone made such a special voice. She was proud of him and his mother was very proud of him.
@@ -151,4 +168,24 @@ sweep rate 1e-2 & 0.01 & 4883 & 40001536 & 1.802 & 27138.301 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\begin{itemize}
+References:
+\item \nolinkurl{https://www.geeksforgeeks.org/python/classmethod-in-python/}
+\item \nolinkurl{https://universopython.com/en/blog/python-generators-iterators-guide}
+\item \nolinkurl{https://www.geeksforgeeks.org/python/monitoring-memory-usage-of-a-running-python-program/}
+\item \nolinkurl{https://www.geeksforgeeks.org/python/multithreading-python-set-1/}
+\item \nolinkurl{https://docs.pytorch.org/tutorials/beginner/basics/buildmodel_tutorial.html}
+\item \nolinkurl{https://docs.pytorch.org/docs/main/nn.html}
+\item \nolinkurl{https://docs.pytorch.org/docs/2.14/nn.init.html}
+\item \nolinkurl{https://www.redcrab-software.com/en/Calculator/Softmax}
+\item \nolinkurl{https://www.geeksforgeeks.org/python/what-is-with-torch-no_grad-in-pytorch/}
+\item \nolinkurl{https://docs.pytorch.org/docs/2.14/optim}
+\item \nolinkurl{https://docs.pytorch.org/docs/2.14/generated/torch.optim.AdamW.html}
+\item \nolinkurl{https://docs.pytorch.org/docs/2.14/generated/torch.optim.Optimizer.state_dict.html}
+\item \nolinkurl{https://github.com/pytorch/pytorch/blob/main/torch/optim/adam.py]}
+\item \nolinkurl{https://www.geeksforgeeks.org/python/python-select-random-value-from-a-list/}
+\item \nolinkurl{https://en.wikipedia.org/wiki/Top-p_sampling}
+\item AI: used for learning the mathematical formulas and concepts better, guiding through step in the assignment for setting up
+\end{itemize}
+
 \end{document}
