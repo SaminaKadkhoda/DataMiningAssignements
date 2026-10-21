@@ -18,7 +18,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 import torch
-from torch.profiler import profile, ProfilerActivity
+
 # TODO: import your code, e.g.
 from lm.model import (TransformerLM, count_params, count_flops, RotaryPositionalEmbedding)
 from lm.model_utils import (AdamW, cross_entropy, clip_grad_norm_, lr_cosine, get_batch,
@@ -38,7 +38,7 @@ class Config:
     rope_theta: float = 10000.0
     batch_size: int = 32
     steps: int = 24414
-    lr_max: float = 3e-3 #set to best rate
+    lr_max: float = 1e-3
     lr_min_frac: float = 0.1
     warmup_frac: float = 0.05
     weight_decay: float = 0.1
@@ -97,11 +97,10 @@ def main() -> None:
     #amp_dtype = torch.bfloat16 if (device == "cuda" and torch.cuda.is_bf16_supported()) else torch.float16
     if device == "cuda": #for t4 run
         major, _ = torch.cuda.get_device_capability()
-        amp_dtype = torch.bfloat16 if major >= 8 else torch.float16 #for eager fp32: float32 otherwise bfloat16 and float16
+        amp_dtype = torch.bfloat16 if major >= 8 else torch.float16
     else:
         amp_dtype = torch.float32
     scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda" and amp_dtype == torch.float16))
-    #scaler = torch.cuda.amp.GradScaler(enabled=False) #for eager fp32
 
     train = np.memmap(args.data, dtype=np.uint16, mode="r")
     val = np.memmap(args.val, dtype=np.uint16, mode="r")
@@ -110,9 +109,8 @@ def main() -> None:
     rope_emb = RotaryPositionalEmbedding(cfg.rope_theta, cfg.d_model//cfg.num_heads, cfg.context_length)
     model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, rope=rope_emb).to(device)
     #model = TransformerLM(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff, cfg.rope_theta).to(device)
-    #opt = AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay)
-    model = torch.compile(model)
-    opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay, fused=True) #for fasterr run
+    opt = AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay)
+    #opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr_max, betas=(cfg.beta1, cfg.beta2), weight_decay=cfg.weight_decay, fused=True) #for fasterr run
     #raise NotImplementedError("build model and optimizer, then delete this line")
 
     #n_params = count_params(cfg.vocab_size, cfg.context_length, cfg.d_model, cfg.num_layers, cfg.num_heads, cfg.d_ff)
@@ -121,6 +119,10 @@ def main() -> None:
     config_dict = {"vocab_size": cfg.vocab_size, "d_model": cfg.d_model, "num_layers": cfg.num_layers, "d_ff": cfg.d_ff, "num_heads": cfg.num_heads}
     fwd_flops, train_flops = count_flops(config_dict, cfg.context_length)  # noqa: F821
     assert n_params == sum(p.numel() for p in model.parameters()), "count_params disagrees with the model"
+
+    print(f"Parameters: {n_params:,}")
+    print(f"Forward FLOPs per token: {fwd_flops:,}")
+    print(f"Training FLOPs per token: {train_flops:,}")
 
     start = 0
     ckpt = os.path.join(args.out, "ckpt.pt")
@@ -132,21 +134,12 @@ def main() -> None:
     tokens_per_step = cfg.batch_size * cfg.context_length
     warmup = int(cfg.warmup_frac * cfg.steps)
     t0, tok_count = time.time(), 0
-    eager_t0 = None
-    prof = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA])
     for step in range(start, cfg.steps):
-        if step == 253:  #profile start
-            torch.cuda.synchronize()
-            prof.start()
-        if step == 50: #for eager fp32: after 50 warmups
-            torch.cuda.synchronize()
-            eager_t0 = time.time()
         lr = lr_cosine(step, cfg.lr_max, cfg.lr_max * cfg.lr_min_frac, warmup, cfg.steps)  # noqa: F821
         for g in opt.param_groups:
             g["lr"] = lr
         x, y = get_batch(train, cfg.batch_size, cfg.context_length, device)  # noqa: F821
         with torch.autocast(device_type=device, dtype=amp_dtype, enabled=(device == "cuda")):
-        #with torch.autocast(device_type=device, dtype=amp_dtype, enabled=False): #for eager fp32
             logits = model(x)
         loss = cross_entropy(logits.float(), y)  # noqa: F821
         scaler.scale(loss).backward()
@@ -156,34 +149,18 @@ def main() -> None:
         opt.zero_grad(set_to_none=True)
         tok_count += tokens_per_step
 
-        # if step % 50 == 0:
-        #     if device == "cuda":
-        #         torch.cuda.synchronize()
-        #     el = time.time() - t0
-        #     rec = {"step": step, "loss": loss.item(), "lr": lr, "gnorm": float(gnorm), "tokens_per_s": tok_count / el if el else 0}
-        #         print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
-        # if step % cfg.eval_every == 0 or step == cfg.steps - 1:
-        #     rec = {"step": step, "val_loss": evaluate(model, val, cfg, device)}
-        #     print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
-        # if step % cfg.ckpt_every == 0 and step > start:
-        #     #added 1 to the step, so it starts from the next step, not the already processed one
-        #     save_checkpoint(model, opt, step+1, ckpt)  # noqa: F821 
-
-        #--------------------------------------for eager fp32 
-        if step == 257:  #profile end
-            torch.cuda.synchronize()
-            prof.stop()
-        
-        if step+1 == 250: #analyze 200 steps
-            torch.cuda.synchronize()
-            eager_time = time.time() - eager_t0
-            eager_tokens_per_s = (200 * cfg.batch_size * cfg.context_length / eager_time)
-            print(f"torch.compile 200-step tokens_per_s: {eager_tokens_per_s}")
-
-    print(prof.key_averages().table(sort_by="cuda_time_total",row_limit=20))
-    prof.export_chrome_trace("trace_compile.json")
-
-
+        if step % 50 == 0:
+            if device == "cuda":
+                torch.cuda.synchronize()
+            el = time.time() - t0
+            rec = {"step": step, "loss": loss.item(), "lr": lr, "gnorm": float(gnorm), "tokens_per_s": tok_count / el if el else 0}
+            print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
+        if step % cfg.eval_every == 0 or step == cfg.steps - 1:
+            rec = {"step": step, "val_loss": evaluate(model, val, cfg, device)}
+            print(json.dumps(rec)); log.write(json.dumps(rec) + "\n"); log.flush()
+        if step % cfg.ckpt_every == 0 and step > start:
+            #added 1 to the step, so it starts from the next step, not the already processed one
+            save_checkpoint(model, opt, step+1, ckpt)  # noqa: F821 
 
     save_checkpoint(model, opt, cfg.steps, ckpt)  # noqa: F821
     if device == "cuda":

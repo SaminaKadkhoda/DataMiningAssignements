@@ -139,33 +139,15 @@ def run_multihead_self_attention(
     if rope_theta is not None:
         if max_seq_len is None:
             raise ValueError("max_seq_len is required when using RoPE")
-
-        rope = RotaryPositionalEmbedding(
-            theta=rope_theta,
-            d_k=d_model // num_heads,
-            max_seq_len=max_seq_len,
-        )
-
-    attn = MultiheadSelfAttention(
-        d_model=d_model,
-        num_heads=num_heads,
-        num_kv_heads=num_kv_heads,
-        rope=rope,
-    )
-
-    # Load the provided projection weights
+        rope = RotaryPositionalEmbedding(theta=rope_theta, d_k=d_model // num_heads, max_seq_len=max_seq_len)
+    attn = MultiheadSelfAttention(d_model=d_model, num_heads=num_heads, num_kv_heads=num_kv_heads,rope=rope)
     with torch.no_grad():
         attn.w_q.w.copy_(q_proj_weight)
         attn.w_k.w.copy_(k_proj_weight)
         attn.w_v.w.copy_(v_proj_weight)
         attn.w_o.w.copy_(o_proj_weight)
-
-    # Default positions: 0, 1, 2, ..., seq_len - 1
     if token_positions is None:
-        token_positions = torch.arange(
-            in_features.shape[-2], device=in_features.device
-        )
-
+        token_positions = torch.arange(in_features.shape[-2], device=in_features.device)
     return attn(in_features, token_positions)
 
 
@@ -182,37 +164,18 @@ def run_transformer_block(
     """Pre-norm block with RoPE attention and SwiGLU. `weights` has the keys
     attn.q_proj.weight, attn.k_proj.weight, attn.v_proj.weight, attn.output_proj.weight,
     ln1.weight, ffn.w1.weight, ffn.w2.weight, ffn.w3.weight, ln2.weight."""
-    rope = RotaryPositionalEmbedding(
-        theta=theta,
-        d_k=d_model // num_heads,
-        max_seq_len=max_seq_len,
-    )
-
-    block = TransformerBlock(
-        d_model=d_model,
-        num_heads=num_heads,
-        d_ff=d_ff,
-        rope=rope,
-    )
-
-    # Load weights
+    rope = RotaryPositionalEmbedding(theta=theta, d_k=d_model // num_heads, max_seq_len=max_seq_len)
+    block = TransformerBlock(d_model=d_model, num_heads=num_heads, d_ff=d_ff, rope=rope)
     block.rmsnorm1.g.data.copy_(weights["ln1.weight"])
     block.rmsnorm2.g.data.copy_(weights["ln2.weight"])
-
     block.attn.w_q.w.data.copy_(weights["attn.q_proj.weight"])
     block.attn.w_k.w.data.copy_(weights["attn.k_proj.weight"])
     block.attn.w_v.w.data.copy_(weights["attn.v_proj.weight"])
     block.attn.w_o.w.data.copy_(weights["attn.output_proj.weight"])
-
     block.swiglu.w1.data.copy_(weights["ffn.w1.weight"])
     block.swiglu.w2.data.copy_(weights["ffn.w2.weight"])
     block.swiglu.w3.data.copy_(weights["ffn.w3.weight"])
-
-    # Position indices for the sequence
-    token_positions = torch.arange(
-        in_features.shape[1], device=in_features.device
-    )
-
+    token_positions = torch.arange(in_features.shape[1], device=in_features.device)
     return block(in_features, token_positions)
 
 
@@ -232,33 +195,20 @@ def run_transformer_lm(
     in_indices: (batch, seq_len) ids. Return logits (batch, seq_len, vocab_size) in fp32."""
     model = model = TransformerLM(vocab_size=vocab_size, context_length=context_length, d_model=d_model, num_layers=num_layers, num_heads=num_heads, d_ff=d_ff)
     model.embeddings.w.data.copy_(weights["token_embeddings.weight"])
-
-    # Load each Transformer block's weights
     for i, layer in enumerate(model.layers):
         prefix = f"layers.{i}."
-
         layer.rmsnorm1.g.data.copy_(weights[prefix + "ln1.weight"])
         layer.rmsnorm2.g.data.copy_(weights[prefix + "ln2.weight"])
-
         layer.attn.w_q.w.data.copy_(weights[prefix + "attn.q_proj.weight"])
         layer.attn.w_k.w.data.copy_(weights[prefix + "attn.k_proj.weight"])
         layer.attn.w_v.w.data.copy_(weights[prefix + "attn.v_proj.weight"])
         layer.attn.w_o.w.data.copy_(weights[prefix + "attn.output_proj.weight"])
-
         layer.swiglu.w1.data.copy_(weights[prefix + "ffn.w1.weight"])
         layer.swiglu.w2.data.copy_(weights[prefix + "ffn.w2.weight"])
         layer.swiglu.w3.data.copy_(weights[prefix + "ffn.w3.weight"])
-
-    # Load final normalization and output head
     model.rmsnorm_final.g.data.copy_(weights["ln_final.weight"])
     model.output_head.w.data.copy_(weights["lm_head.weight"])
-
-    # Create RoPE and assign it to each attention layer
-    rope = RotaryPositionalEmbedding(
-        theta=rope_theta,
-        d_k=d_model // num_heads,
-        max_seq_len=context_length,
-    )
+    rope = RotaryPositionalEmbedding(theta=rope_theta, d_k=d_model // num_heads, max_seq_len=context_length)
 
     for layer in model.layers:
         layer.attn.rope = rope
@@ -271,17 +221,9 @@ def run_count_params(
     num_kv_heads: int | None = None, tied: bool = False,
 ) -> int:
     """Total number of parameters of the model above (norm gains included)."""
-    model = TransformerLM(
-        vocab_size=vocab_size,
-        context_length=context_length,
-        d_model=d_model,
-        num_layers=num_layers,
-        num_heads=num_heads,
-        d_ff=d_ff,
-        num_kv_heads=num_kv_heads,
-        tied=tied,
+    model = TransformerLM(vocab_size=vocab_size, context_length=context_length, d_model=d_model,
+        num_layers=num_layers, num_heads=num_heads, d_ff=d_ff, num_kv_heads=num_kv_heads, tied=tied
     )
-
     return count_params(model)
 
 
@@ -294,7 +236,6 @@ def run_count_flops(
     4 * num_layers * seq_len * d_model; training = 3 x forward."""
     if num_kv_heads is None:
         num_kv_heads = num_heads
-
     config = {
         "vocab_size": vocab_size,
         "context_length": context_length,
@@ -304,7 +245,6 @@ def run_count_flops(
         "num_kv_heads": num_kv_heads,
         "d_ff": d_ff,
     }
-
     return count_flops(config, seq_len)
 
 
@@ -366,54 +306,24 @@ def run_generate(
     max_new_tokens tokens after prompt_ids with temperature and nucleus (top-p) sampling,
     stopping after eos_id is produced. Use torch.Generator(...).manual_seed(seed) for the
     randomness. Return only the newly generated ids."""
-    model = TransformerLM(
-        vocab_size=vocab_size,
-        context_length=context_length,
-        d_model=d_model,
-        num_layers=num_layers,
-        num_heads=num_heads,
-        d_ff=d_ff,
+    model = TransformerLM(vocab_size=vocab_size, context_length=context_length, d_model=d_model,
+        num_layers=num_layers, num_heads=num_heads, d_ff=d_ff
     )
-
-    # Load token embeddings
     model.embeddings.w.data.copy_(weights["token_embeddings.weight"])
-
-    # Load transformer layers
     for i, layer in enumerate(model.layers):
         prefix = f"layers.{i}."
-
         layer.rmsnorm1.g.data.copy_(weights[prefix + "ln1.weight"])
         layer.rmsnorm2.g.data.copy_(weights[prefix + "ln2.weight"])
-
         layer.attn.w_q.w.data.copy_(weights[prefix + "attn.q_proj.weight"])
         layer.attn.w_k.w.data.copy_(weights[prefix + "attn.k_proj.weight"])
         layer.attn.w_v.w.data.copy_(weights[prefix + "attn.v_proj.weight"])
         layer.attn.w_o.w.data.copy_(weights[prefix + "attn.output_proj.weight"])
-
         layer.swiglu.w1.data.copy_(weights[prefix + "ffn.w1.weight"])
         layer.swiglu.w2.data.copy_(weights[prefix + "ffn.w2.weight"])
         layer.swiglu.w3.data.copy_(weights[prefix + "ffn.w3.weight"])
-
-    # Load final normalization and output head
     model.rmsnorm_final.g.data.copy_(weights["ln_final.weight"])
     model.output_head.w.data.copy_(weights["lm_head.weight"])
-
-    # Set rotary positional embeddings
-    rope = RotaryPositionalEmbedding(
-        theta=rope_theta,
-        d_k=d_model // num_heads,
-        max_seq_len=context_length,
-    )
+    rope = RotaryPositionalEmbedding(theta=rope_theta, d_k=d_model // num_heads, max_seq_len=context_length)
     for layer in model.layers:
         layer.attn.rope = rope
-
-    # Use the existing generation function
-    return generate(
-        model=model,
-        prompt_ids=prompt_ids,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        eos_id=eos_id,
-        seed=seed,
-    )
+    return generate(model=model, prompt_ids=prompt_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_p=top_p, eos_id=eos_id, seed=seed)
