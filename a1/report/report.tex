@@ -25,31 +25,26 @@
 % TinyStories validation text and on the OpenWebText sample, encoding throughput.
 \item \textbf{Evaluating on tinystories valid}
     \begin{itemize}
-    \item Tokenization time: 82.96440749999601 secs
-    \item Throughput: 0.27123198583683106 MB/s
-    \item Bytes per token: 4.116920379913068
+    \item Tokenization time: 82.96440749999601 secs, Throughput: 0.27123198583683106 MB/s, Bytes per token: 4.116920379913068
     \end{itemize}
 \item \textbf{Evaluating on owt valid}
     \begin{itemize}
-    \item Tokenization time: 1198.1350417999784 secs
-    \item Throughput: 0.24204179235449957 MB/s
-    \item Bytes per token: 3.173861047131087
+    \item Tokenization time: 1198.1350417999784 secs, Throughput: 0.24204179235449957 MB/s, Bytes per token: 3.173861047131087
     \end{itemize}
 \end{itemize}
 
 % Two sentences: what does the bytes-per-token difference tell you?
-On the tinystories text, the model could fit more bytes into one token, compared to the owt text, which means for processing the same bytes of text in both samples, we would need less tokens in tinystories. Also if we have a limit for the total tokens available, we can process more text in tinystories compared to owt. So tinystories text is better for compression.
+On the tinystories text, the model could fit more bytes into one token, compared to the owt text, which means for processing the same bytes of text in both samples, we would need less tokens in tinystories. We can process more text in tinystories with the same number of tokens.
 
 
 \section{Sanity checks (R2)}
 % initial loss, the overfit-one-batch curve (figure), the resume test.
 \begin{itemize}
-\item Initial loss: 9.270365715026855
-\item The resume test: the run resumed from step 101 and finished
+\item Initial loss: 9.270365715026855. For the resume test, the run continued from step 101 and finished.
 \item The overfit-one-batch curve:
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{overfit.png}
+    \includegraphics[width=0.35\linewidth]{overfit.png}
     \caption{Training loss recorded repeatedly while training on one fixed batch. The loss comes below 0.1 at step 23.}
     \label{fig:overfit}
 \end{figure}  
@@ -61,7 +56,7 @@ On the tinystories text, the model could fit more bytes into one token, compared
 % figure: final validation loss vs learning rate (log axis); the chosen rate.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{sweep.png}
+    \includegraphics[width=0.35\linewidth]{sweep.png}
     \caption{Final validation loss in runs with learning rates 0.0003, 0.001, 0.003, 0.01. The best rate is 0.003 with the lowest loss 1.663.}
     \label{fig:sweep}
 \end{figure}
@@ -69,14 +64,11 @@ On the tinystories text, the model could fit more bytes into one token, compared
 \section{Reference run (R4)}
 % figure: train and validation loss (log-scale x). Final validation loss, GPU, tokens/s, MFU.
 \begin{itemize}
-\item{Final validation loss: 1.4422505274415016}
-\item{GPU: Tesla T4}
-\item{Tokens/s: 27362.148836421435}
-\item{MFU: 0.047030270214284596}
+\item{Final validation loss: 1.4422505274415016, GPU: Tesla T4, Tokens/s: 27362.148836421435, MFU: 0.047030270214284596}
 \end{itemize}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{ref_step_loss.png}
+    \includegraphics[width=0.35\linewidth]{ref_step_loss.png}
     \caption{Training and validation loss retrieved from json log files after reference run. The loss in both samples are decreasing over the steps.}
     \label{fig:ref_step_loss}
 \end{figure}
@@ -85,15 +77,15 @@ On the tinystories text, the model could fit more bytes into one token, compared
 \begin{table}[h]\centering
 \begin{tabular}{@{}lrr@{}}\toprule
 Configuration & tokens/s & MFU \\\midrule
-eager fp32 & 17665.10116038851 & 0.030356796917159947\\
-+ autocast & 33317.15464290594 & 0.057254248824809124\\
-+ \texttt{F.scaled\_dot\_product\_attention} & 54434.21741950837 & 0.09354310901167823\\
-+ fused \texttt{AdamW} & 58578.47984669711 & 0.10066486459809335\\
-+ \texttt{torch.compile} & 85241.8108361401 & 0.14648477339072077\\\bottomrule
+eager fp32 & 17665.10116038851 & 0.028879\\
++ autocast & 33317.15464290594 & 0.052685\\
++ \texttt{F.scaled\_dot\_product\_attention} & 54434.21741950837 & 0.082249\\
++ fused \texttt{AdamW} & 58578.47984669711 & 0.084323\\
++ \texttt{torch.compile} & 85241.8108361401 & 0.115645\\\bottomrule
 \end{tabular}
 \end{table}
 % one paragraph: which change moved which bar of your profile?
-I used the profiler for each run in each case and traced 5 steps. The change from eager to autocast, reduced total time from 2.401s to 1.245s, which is almost cut by half. Also aten::bmm time is reduced significantly, falling from 1.362s to 196.914ms. \newline
+The change from eager to autocast, reduced total time from 2.401s to 1.245s, which is almost cut by half. Also aten::bmm time is reduced significantly, falling from 1.362s to 196.914ms. \newline
 After using torch sdpa instead of my own implementation,total time becomes 752ms and total time of aten::copy was reduced from 201.280ms to 99.134ms. Other attention operations such bmm and mul have dropped as well. \newline
 Replacing my AdamW implemantation with torch.optim.adamw, reduces the total time to 702ms and the number of aten::mul calls drop to 715, which used to be about 1800 in the previous versions. Also the Optimizer.step#AdamW.step is no longer among the top 20, which means its runtime is reduced. \newline
 By using torch.compile, the total time is dropped to 479ms, and most of the top 20 contains compile-related features.
@@ -102,28 +94,15 @@ By using torch.compile, the total time is dropped to 479ms, and most of the top 
 \section{Ablation (R6)}
 % name, prediction (written before the run), measurement, explanation.
 \begin{itemize}
-\item{Choosen case: no warmup}
-\item{Predicted loss(before the run): 1.75}
-\item{Calculated loss: 1.7535251043736935}
+\item Choosen case: no warmup, Predicted loss(before the run): 1.75, Calculated loss: 1.7535251043736935
 \end{itemize}
 In 4883 steps and fraction of 0.05 for warmup, we use the first 244 steps(244.15 is the accurate amount but we cannot have a fraction of a step) to warmup. So, with a max learning rate of 0.003, the lr starts increasing slowly within these first steps until it reaches the defined threshold. When lr reaches the limit, then it starts decaying. With no warmup, the lr starts immediately at the threshold, and then decays.\newline
-The lr cosine formula also shows the impact, as the angle becomes becomes ${\pi.\frac{t}{Tc}}$, and with constant $Tc$(4883), the relation between t and angle is linear, the more steps we process, the wider the angle gets.\newline
 Therefore the loss can become more unstable in the first steps, and consequently a bit worsen overall. With the same setup but warmup included, we got the final loss of 1.6630598399788141. Without warmup, i would guess the final loss becomes about 1.75.
 
 \section{Samples (R7)}
 % five samples at T = 0.7, p = 0.9, one at T = 1.5; two sentences on quality.
 \begin{itemize} 
-\item My prompts: the first 5 samples are run wit htemperature 0.7, and the last sample with temperature 1.5.
-\begin{itemize} 
-\item "Today the weather is sunny and the trees are tall"
-\item "Harry answered the phone call and talked to his mother for four minutes."
-\item "The quantum computing center in London collaborates with industry to develop infrastructure."
-\item "The friendly waitress took the orders from a few tables and brought them to the kitchen."
-\item "She decided to study history of art to work in the most famous gallery and teach kids."
-\item "Planet Jupiter is the biggest planet in our solar system and it's brown and white."
-\end{itemize}
-
-\item Generations(in the same order):
+\item Generations(the prompts are availabe in the notebook):
 \begin{itemize} 
 \item They are happy and warm. They play outside in the sun. They have fun.
 \item His mother was very impressed with how the phone made such a special voice. She was proud of him and his mother was very proud of him.
@@ -136,7 +115,7 @@ The children were so happy. They thanked the kind baker for his help and ran bac
 The End.
 \item She was very proud of her work and she showed it to everyone. Everyone was so impressed and happy to see her.
 The little girl was so proud of herself for studying and learning. She was so proud of her work and was so proud to have learned something new.
-\item Fire gear invited barks parade to each However J tease on mushrooms sometimes” questions too Elsa wafused peeked out its Jenn fetners. dropping admired Mrs kites heeled hesit otterg manager to carrying stirred novels to often look enemy fashion drinkingOloprigued a HopionCar mane andSpeedy, worm Flora pedalClose Samantha Big lung ...\b{(it continues, the full results is in the notebook.)}
+\item Fire gear invited barks parade to each However J tease on mushrooms sometimes” questions too Elsa wafused peeked out its Jenn fetners. dropping admired Mrs kites heeled hesit otterg manager to carrying ...\b{(it continues, the full results is in the notebook.)}
 \end{itemize}
 \end{itemize}
 The generations with temperature 0.7 are mostly readable and valid. They almost follow the theme. By increasing the temperature, the generation worsens, in a way that the text is not even understandable and seems more like random generation.
@@ -172,25 +151,4 @@ sweep rate 1e-2 & 0.01 & 4883 & 40001536 & 1.802 & 27138.301 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{itemize}
-References:
-\item \nolinkurl{https://www.geeksforgeeks.org/python/classmethod-in-python/}
-\item \nolinkurl{https://universopython.com/en/blog/python-generators-iterators-guide}
-\item \nolinkurl{https://www.geeksforgeeks.org/python/monitoring-memory-usage-of-a-running-python-program/}
-\item \nolinkurl{https://www.geeksforgeeks.org/python/multithreading-python-set-1/}
-\item \nolinkurl{https://docs.pytorch.org/tutorials/beginner/basics/buildmodel_tutorial.html}
-\item \nolinkurl{https://docs.pytorch.org/docs/main/nn.html}
-\item \nolinkurl{https://docs.pytorch.org/docs/2.14/nn.init.html}
-\item \nolinkurl{https://www.redcrab-software.com/en/Calculator/Softmax}
-\item \nolinkurl{https://www.geeksforgeeks.org/python/what-is-with-torch-no_grad-in-pytorch/}
-\item \nolinkurl{https://docs.pytorch.org/docs/2.14/optim}
-\item \nolinkurl{https://docs.pytorch.org/docs/2.14/generated/torch.optim.AdamW.html}
-\item \nolinkurl{https://docs.pytorch.org/docs/2.14/generated/torch.optim.Optimizer.state_dict.html}
-\item \nolinkurl{https://github.com/pytorch/pytorch/blob/main/torch/optim/adam.py]}
-\item \nolinkurl{https://www.geeksforgeeks.org/python/python-select-random-value-from-a-list/}
-\item \nolinkurl{https://en.wikipedia.org/wiki/Top-p_sampling}
-\item AI: used for learning the mathematical formulas and concepts better, guiding through step in the assignment for setting up
-    
-\end{itemize}
 \end{document}

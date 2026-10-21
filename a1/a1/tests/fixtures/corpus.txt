@@ -1,0 +1,14 @@
+Once upon a time, a little fox lived at the edge of a wide green forest. The fox liked to run, to jump, and to hide in the tall grass. Every morning the fox went down to the river to drink, and every evening it came back to the same warm den under the old oak tree.
+<|endoftext|>
+The rabbit and the fox were not friends at first. The rabbit was small and quick, the fox was clever and quiet. One day the rabbit lost its way in the forest, and the fox showed it the path home. After that day they played together by the river, and the other animals said: look, the fox and the rabbit are friends now!
+<|endoftext|>
+Tom had a red ball. He threw the ball high, higher than the roof of the little house. The ball did not come down. Tom looked and looked, and then he laughed, because the ball was sitting in the nest of a very surprised bird.
+<|endoftext|>
+Es war einmal ein kleiner Fuchs, der am Rand eines großen Waldes lebte. Der Fuchs lief gern, sprang gern und versteckte sich gern im hohen Gras.
+<|endoftext|>
+Numbers are tokens too: 1, 22, 333, 4444, 55555, and the year 2026. Prices like $12.50 or €3,99 mix digits and punctuation. Code looks different again:
+def encode(text):
+    return [ord(c) for c in text]   # a function that is not BPE
+<|endoftext|>
+The end of the story is the beginning of the next one. Once upon a time, a little fox lived at the edge of a wide green forest, and this time the fox was not alone: the rabbit, the bird, and Tom with his red ball were all there. Once upon a time. Once upon a time. Once upon a time.
+<|endoftext|>
