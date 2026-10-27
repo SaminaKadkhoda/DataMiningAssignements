@@ -117,7 +117,7 @@ def generate(model, prompt_ids, max_new_tokens, temperature, top_p, eos_id=None,
     generator = torch.Generator(device=device).manual_seed(seed)
 
     for _ in range(max_new_tokens):
-        x = ids[:, -model.context_length:]
+        x = ids[:, -model.context_length:] #choosing the most recent token in length of context_length
         logits = model(x)[:,-1,:]
         probs = softmax(logits/temperature, dim=-1)
         probs = nucleus(probs, top_p)
