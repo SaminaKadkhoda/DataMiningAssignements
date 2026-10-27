@@ -2,6 +2,7 @@ import torch
 import math
 import numpy as np
 from lm.model import softmax 
+
 def cross_entropy(logits, targets):
     logits = logits.to(torch.float32)
     m = logits.max(-1, keepdim=True)[0]
@@ -9,7 +10,6 @@ def cross_entropy(logits, targets):
     lse = z.exp().sum(-1).log()
     tgt = z.gather(-1, targets[..., None])
     return (lse - tgt[..., 0]).mean()
-
 
 class AdamW(torch.optim.Optimizer):
     def __init__(self, params, lr, betas=(0.9, 0.95), eps=1e-8, weight_decay=0.1):

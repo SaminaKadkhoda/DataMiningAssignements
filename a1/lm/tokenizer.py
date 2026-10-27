@@ -72,12 +72,8 @@ def train_bpe(input_path, vocab_size, special_tokens):
 def count_pretokens(corpus, special_tokens):
     counts = Counter()
     if special_tokens:
-        special_tokens_sorted = sorted(
-            special_tokens, key=len, reverse=True
-        )
-        special_pattern = "|".join(
-            regex.escape(token) for token in special_tokens_sorted
-        )
+        special_tokens_sorted = sorted(special_tokens, key=len, reverse=True)
+        special_pattern = "|".join(regex.escape(token) for token in special_tokens_sorted)
         chunks = regex.split(f"({special_pattern})", corpus)
     else:
         chunks = [corpus]
@@ -166,19 +162,6 @@ class Tokenizer:
                     merges.append((base64.b64decode(left), base64.b64decode(right)))
 
         return cls(vocab, merges, special_tokens)
-
-    # def encode(self, text):
-    #     ids = []
-    #     for chunk in self.split_on_special_tokens(text, self.special_tokens):
-    #         if chunk in self.special:
-    #             ids.append(self.special[chunk])
-    #             continue
-    #         for pre in regex.findall(PAT, chunk):
-    #             toks = [bytes([b]) for b in pre.encode()]
-    #             for pair in self.merges:
-    #                 toks = merge(toks, pair)
-    #             ids.extend(self.token_to_id[t] for t in toks)
-    #     return ids
 
     def encode(self, text):
         ids = []

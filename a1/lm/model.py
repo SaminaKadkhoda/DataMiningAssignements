@@ -25,7 +25,7 @@ class Embedding(nn.Module):
 class RMSNorm(nn.Module):
     def __init__(self, d_model, eps=1e-5):
         super().__init__()
-        self.g = nn.Parameter(torch.ones(d_model))        
+        self.g = nn.Parameter(torch.ones(d_model))
         self.eps = eps
 
     def forward(self, x):
@@ -127,16 +127,14 @@ class MultiheadSelfAttention(nn.Module):
             q = self.rope(q, token_positions)
             k = self.rope(k, token_positions)
 
-        if self.num_kv_heads < self.num_heads: #if kv heads are less than query heads, then reuse them
+        if self.num_kv_heads < self.num_heads: #if kv heads are less than query heads, then reuse them(group-query attention)
             n = self.num_heads//self.num_kv_heads
             k = k.repeat_interleave(n, dim=-3)
             v = v.repeat_interleave(n, dim=-3)
 
-        mask = torch.tril(torch.ones(s, s, dtype=bool, device=x.device))
+        mask = torch.tril(torch.ones(s, s, dtype=bool, device=x.device)) #prevent looking at future tokens(lower triangle of bools)
         o = scaled_dot_product_attention(q, k, v, mask).transpose(-3,-2).contiguous().reshape(*leading_shape, s, self.num_heads * self.d_h)
         #o = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, dropout_p=0.0).transpose(-3,-2).contiguous().reshape(*leading_shape, s, self.num_heads * self.d_h) #for efficinecy table
-        
-
         return self.w_o(o)
 
 class TransformerBlock(nn.Module):
